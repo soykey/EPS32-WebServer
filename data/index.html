@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Controller</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <h1 id="paths"></h1>
+    <span id="list"></span>
+    <div class="controller">
+      <div class="cross-layout">
+        <button class="cross-layout-position-top btn cross-key-btn" id="straight" onclick="_fetch(this.id)">Go</button>
+        <button class="cross-layout-position-center btn cross-key-btn" id="stop" onclick="_fetch(this.id)">Stop</button>
+        <button class="cross-layout-position-bottom btn cross-key-btn" id="back" onclick="_fetch(this.id)">Back</button>
+        <button class="cross-layout-position-left btn cross-key-btn" id="left" onclick="_fetch(this.id)">Left</button>
+        <button class="cross-layout-position-right btn cross-key-btn" id="right" onclick="_fetch(this.id)">Right</button>
+      </div>
+    </div>
+    <!-- You can also require other files to run in this process -->
+    <script>
+      const _fetch = (arg) => {
+          fetch(`http://192.168.4.1/${arg}`, {mode:'no-cors'})
+          console.log(arg.id)
+      }
+            
+      let connectedGamepadIndex;
+      let loopID;
+
+      addEventListener("gamepadconnected", (e) => {
+          connectedGamepadIndex = e.gamepad.index
+          let gamepads = navigator.getGamepads();
+          console.log(connectedGamepadIndex)
+          console.log(gamepads[connectedGamepadIndex])
+          requestAnimationFrame(loop);
+      });
+
+      addEventListener("gamepaddisconnected", (e) => {
+          connectedGamepadIndex = null;
+          cancelAnimationFrame(loopID);
+      });
+
+      let a = []
+      for (let i = 0; i < 17; i++) {
+          a[i]=0
+      }
+
+      let xy = [1,0]
+
+      function loop(timestamp) {
+          let gamepads = navigator.getGamepads();
+          let gp = gamepads[0];
+
+          //Buttons
+          for (let i = 0; i < 17; i++) {
+              //ABXY buttons
+              if(gp.buttons[i].pressed&&a[i]==0) {
+                  a[i] = 1
+                  console.log(`Pressed!${i}`)
+                  if (i==(3)) {
+                      _fetch('straight')
+                      console.log('go')
+                  }
+                  if (i==(0)) {
+                      _fetch('back')
+                      console.log('back')
+                  }
+                  if (i==(2)) {
+                      _fetch('left')
+                      console.log('left')
+                  }
+                  if (i==(1)) {
+                      _fetch('right')
+                      console.log('right')
+                  }
+
+                  //LB
+                  if (i==6) {
+                      _fetch('ldon')
+                      console.log('ld')
+                  }
+                  //RB
+                  if (i==7) {
+                      _fetch('rdon')
+                      console.log('rd')
+                  }
+                  //LT
+                  if (i==4) {
+                      _fetch('lsyl')
+                      console.log('lsyl')
+                  }
+                  //RT
+                  if (i==5) {
+                      _fetch('rsyl')
+                      console.log('rsyl')
+                  }
+
+
+              } else if(!gp.buttons[i].pressed&&a[i]==1) {
+                  a[i]=0
+                  if (i==0||i==1||i==2||i==3) {
+                      _fetch('stop')
+                      console.log('stop')
+                  }
+                  if (i==6) {
+                      _fetch('ldoff')
+                      console.log('stop')
+                  }
+                  if (i==7) {
+                      _fetch('rdoff')
+                      console.log('stop')
+                  }
+
+                  console.log(`Released!${i}`)
+              }
+          }
+
+          //joystick
+          let x = gp.axes[0],y = gp.axes[1]*-1
+          if (y>0.9&&xy[1]==0) {
+              xy[1] = 1
+              _fetch('straight')
+              console.log('straight')
+          } else
+          if (y<-0.9&&xy[1]==0) {
+              xy[1] = 1
+              _fetch('back')
+              console.log('back')
+          }
+          if (x>0.9&&xy[0]==1) {
+              xy[0] = 0
+              _fetch('right')
+              console.log('right')
+          } else
+          if (x<-0.9&&xy[0]==1) {
+              xy[0] = 0
+              _fetch('left')
+              console.log('left')
+          }
+          if ((-0.9<=x&&x<=0.9)&&xy[0]==0&&xy[1]==0) {
+              xy[0] = 1
+              _fetch('stop')
+              console.log('stop')
+          }
+          if ((-0.9<=y&&y<=0.9)&&xy[1]==1&&xy[0]==1) {
+              xy[1]=0
+              _fetch('stop')
+              console.log('stop')
+          }
+
+          requestAnimationFrame(loop);
+      }
+
+    </script>
+  </body>
+</html>
+ 
