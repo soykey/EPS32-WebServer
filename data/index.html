@@ -6,8 +6,6 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <h1 id="paths"></h1>
-    <span id="list"></span>
     <div class="controller">
       <div class="cross-layout">
         <button class="cross-layout-position-top btn cross-key-btn" id="straight" onclick="_fetch(this.id)">Go</button>
@@ -25,6 +23,7 @@
       }
             
       let connectedGamepadIndex;
+      let i
       let loopID;
 
       addEventListener("gamepadconnected", (e) => {
@@ -32,6 +31,9 @@
           let gamepads = navigator.getGamepads();
           console.log(connectedGamepadIndex)
           console.log(gamepads[connectedGamepadIndex])
+          if (gamepads[connectedGamepadIndex].id=='Xbox 360 Controller (XInput STANDARD GAMEPAD)') {
+            i=connectedGamepadIndex
+          }
           requestAnimationFrame(loop);
       });
 
@@ -49,7 +51,7 @@
 
       function loop(timestamp) {
           let gamepads = navigator.getGamepads();
-          let gp = gamepads[0];
+          let gp = gamepads[i];
 
           //Buttons
           for (let i = 0; i < 17; i++) {
