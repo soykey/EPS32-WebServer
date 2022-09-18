@@ -71,6 +71,9 @@ void setup()
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
   });
+  server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/favicon.ico", "text/css");
+  });
 
   server.on("/straight", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", "straight");
