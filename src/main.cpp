@@ -10,9 +10,18 @@ const IPAddress subnet(255,255,255,0);
 AsyncWebServer server(80);            // ポート設定
 
 #define rd 32
-#define rsyl 33
+#define rs 33
 #define ld 25
-#define lsyl 26
+#define ls 26
+
+#define grs 1
+#define brs 0
+
+#define gls 0
+#define bls 1
+
+bool rf = grs;
+bool lf = gls;
 
 int _on(int num) {
   digitalWrite(num,HIGH);
@@ -25,23 +34,38 @@ int _off(int num) {
   return 0;
 }
 
-bool lf = 1;
-bool rf = 1;
+int rssw(void) {
+  if (rf==grs)
+  {
+    rf = brs;
+    _on(rs);
+  } else {
+    rf == grs;
+    _off(rs);
+  }
+  return 0;
+}
+
+int lssw(void) {
+  if (lf==gls)
+  {
+    lf = bls;
+    _off(ls);
+  } else {
+    lf == gls;
+    _on(ls);
+  }
+  return 0;
+}
 
 void setup()
 {
   Serial.begin(115200);
 
   pinMode(rd,OUTPUT);
-  pinMode(rsyl,OUTPUT);
+  pinMode(rs,OUTPUT);
   pinMode(ld,OUTPUT);
-  pinMode(lsyl,OUTPUT);
-
-  // 初期化 ピストンは両方オフで前進
-  _off(rd);
-  _off(rsyl);
-  _off(ld);
-  _off(lsyl);
+  pinMode(ls,OUTPUT);
 
   // SPIFFSのセットアップ
   if(!SPIFFS.begin(true)){
@@ -67,7 +91,6 @@ void setup()
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html");
   });
-  // style.cssにアクセスされた時のレスポンス
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
   });
@@ -76,51 +99,49 @@ void setup()
   });
 
   server.on("/straight", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "straight");
-    rf=1;
-    lf=1;
-    _off(rsyl);
-    _off(lsyl);
-    delay(100);
     _on(rd);
     _on(ld);
   });
 
   server.on("/stop", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "stop");
     delay(100);
     _off(rd);
     _off(ld);
   });
 
   server.on("/right", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "right");
     rf=1;
     lf=1;
-    _off(rsyl);
-    _off(lsyl);
+    _off(rs);
+    delay(100);
+    _off(ls);
     delay(100);
     _off(rd);
     _on(ld);
   });
 
   server.on("/left", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "left");
     rf=1;
     lf=1;
-    _off(rsyl);
-    _off(lsyl);
+    _off(rs);
+    delay(100);
+    _off(ls);
     delay(100);
     _on(rd);
     _off(ld);
   });
 
   server.on("/back", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "back");
-    rf=0;
-    _on(rsyl);
-    lf=0;
-    _on(lsyl);
+    if (rf==1)
+    {
+      rf=0;
+      _off(rs);
+    }
+    if (lf==1)
+    {       
+      lf=0;
+      _off(rs);
+    }
     delay(100);
     _on(rd);
     _on(ld);
@@ -128,47 +149,45 @@ void setup()
 
   //For Controller
   server.on("/rdon", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "rdon");
     _on(rd);
   });
 
   server.on("/rdoff", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "rdoff");
     _off(rd);
   });
 
   server.on("/ldon", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "ldon");
     _on(ld);
   });
 
   server.on("/ldoff", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "ldoff");
     _off(ld);
   });
 
-  server.on("/rsyl", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "rsyl");
+  server.on("/rs", HTTP_GET, [](AsyncWebServerRequest *request){
     if(rf==0){
-      _off(rsyl);
+      delay(100);
+      _off(rs);
       rf=1;
     }
     else if (rf==1)
     {
-      _on(rsyl);
+      delay(100);
+      _on(rs);
       rf=0;
     }
   });
 
-  server.on("/lsyl", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", "lsyl");
+  server.on("/ls", HTTP_GET, [](AsyncWebServerRequest *request){
     if(lf==0){
-      _off(lsyl);
+      delay(100);
+      _off(ls);
       lf=1;
     }
     else if (lf==1)
     {
-      _on(lsyl);
+      delay(100);
+      _on(ls);
       lf=0;
     }
   });
@@ -184,51 +203,55 @@ void loop() {
     String data = Serial.readStringUntil('\n');
     
     //まっすぐ
-    if (data=="straight") {
+    if (data=="g") {
       rf=1;
       lf=1;
-      _off(rsyl);
-      _off(lsyl);
+      _off(rs);
+      delay(100);
+      _off(ls);
       delay(100);
       _on(rd);
       _on(ld);
     }
 
     //とまる
-    if (data=="stp") {
+    if (data=="s") {
       delay(100);
       _off(rd);
       _off(ld);
     }
     
     //右
-    if (data=="right") {
+    if (data=="r") {
       rf=1;
       lf=1;
-      _off(rsyl);
-      _off(lsyl);
+      _off(rs);
+      delay(100);
+      _off(ls);
       delay(100);
       _off(rd);
       _on(ld);
     }
 
     //左
-    if (data=="left") {
+    if (data=="l") {
       rf=1;
       lf=1;
-      _off(rsyl);
-      _off(lsyl);
+      _off(rs);
+      delay(100);
+      _off(ls);
       delay(100);
       _on(rd);
       _off(ld);
     }
     
     //後ろ
-    if (data=="back") {
+    if (data=="b") {
       rf=0;
-      _on(rsyl);
+      _on(rs);
       lf=0;
-      _on(lsyl);
+      delay(100);
+      _on(ls);
       delay(100);
       _on(rd);
       _on(ld);
@@ -256,24 +279,24 @@ void loop() {
     //右シリンダー
     if (data=="rs"&&rf==0)
     {
-      _off(rsyl);
+      _off(rs);
       rf=1;
     }
     else if (data=="rs"&&rf==1)
     {
-      _on(rsyl);
+      _on(rs);
       rf=0;
     }
     
     //左シリンダー
     if (data=="ls"&&lf==0)
     {
-      _off(lsyl);
+      _off(ls);
       lf=1;
     }
     else if (data=="ls"&&lf==1)
     {
-      _on(lsyl);
+      _on(ls);
       lf=0;
     }
   }
