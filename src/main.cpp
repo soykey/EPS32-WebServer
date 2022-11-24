@@ -4,21 +4,21 @@
 #include <SPIFFS.h>
 
 const char ssid[] = "AirRobot";
-const char pass[] = "iRobotkara";       // パスワードは8文字以上
+const char pass[] = "nogami1103";       // パスワードは8文字以上
 const IPAddress ip(192,168,4,1);
 const IPAddress subnet(255,255,255,0);
 AsyncWebServer server(80);            // ポート設定
 
-#define rd 32
-#define rs 33
-#define ld 25
-#define ls 26
+#define rd 26
+#define rs 25
+#define ld 33
+#define ls 32
 
 #define grs 1
 #define brs 0
 
-#define gls 0
-#define bls 1
+#define gls 1
+#define bls 0
 
 bool rf = grs;
 bool lf = gls;
@@ -40,7 +40,7 @@ int rssw(void) {
     rf = brs;
     _on(rs);
   } else {
-    rf == grs;
+    rf = grs;
     _off(rs);
   }
   return 0;
@@ -52,7 +52,7 @@ int lssw(void) {
     lf = bls;
     _off(ls);
   } else {
-    lf == gls;
+    lf = gls;
     _on(ls);
   }
   return 0;
@@ -98,100 +98,30 @@ void setup()
     request->send(SPIFFS, "/favicon.ico", "text/css");
   });
 
-  server.on("/straight", HTTP_GET, [](AsyncWebServerRequest *request){
-    _on(rd);
-    _on(ld);
-  });
 
   server.on("/stop", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200);
     delay(100);
     _off(rd);
-    _off(ld);
-  });
-
-  server.on("/right", HTTP_GET, [](AsyncWebServerRequest *request){
-    rf=1;
-    lf=1;
     _off(rs);
-    delay(100);
-    _off(ls);
-    delay(100);
-    _off(rd);
-    _on(ld);
-  });
-
-  server.on("/left", HTTP_GET, [](AsyncWebServerRequest *request){
-    rf=1;
-    lf=1;
-    _off(rs);
-    delay(100);
-    _off(ls);
-    delay(100);
-    _on(rd);
-    _off(ld);
-  });
-
-  server.on("/back", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (rf==1)
-    {
-      rf=0;
-      _off(rs);
-    }
-    if (lf==1)
-    {       
-      lf=0;
-      _off(rs);
-    }
-    delay(100);
-    _on(rd);
-    _on(ld);
   });
 
   //For Controller
   server.on("/rdon", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200);
     _on(rd);
   });
 
   server.on("/rdoff", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200);
     _off(rd);
   });
 
-  server.on("/ldon", HTTP_GET, [](AsyncWebServerRequest *request){
-    _on(ld);
-  });
-
-  server.on("/ldoff", HTTP_GET, [](AsyncWebServerRequest *request){
-    _off(ld);
-  });
-
   server.on("/rs", HTTP_GET, [](AsyncWebServerRequest *request){
-    if(rf==0){
-      delay(100);
-      _off(rs);
-      rf=1;
-    }
-    else if (rf==1)
-    {
-      delay(100);
-      _on(rs);
-      rf=0;
-    }
+    request->send(200);
+    rssw();
   });
 
-  server.on("/ls", HTTP_GET, [](AsyncWebServerRequest *request){
-    if(lf==0){
-      delay(100);
-      _off(ls);
-      lf=1;
-    }
-    else if (lf==1)
-    {
-      delay(100);
-      _on(ls);
-      lf=0;
-    }
-  });
-  
   // サーバースタート
   server.begin();
   delay(1000);
@@ -204,12 +134,16 @@ void loop() {
     
     //まっすぐ
     if (data=="g") {
-      rf=1;
-      lf=1;
-      _off(rs);
+      if (rf!=grs)
+      {
+        rssw();
+      }
+      if (lf!=grs)
+      {
+        lssw();
+      }
       delay(100);
-      _off(ls);
-      delay(100);
+      
       _on(rd);
       _on(ld);
     }
@@ -223,11 +157,10 @@ void loop() {
     
     //右
     if (data=="r") {
-      rf=1;
-      lf=1;
-      _off(rs);
-      delay(100);
-      _off(ls);
+      if (lf!=gls)
+      {
+        lssw();
+      }
       delay(100);
       _off(rd);
       _on(ld);
@@ -235,11 +168,10 @@ void loop() {
 
     //左
     if (data=="l") {
-      rf=1;
-      lf=1;
-      _off(rs);
-      delay(100);
-      _off(ls);
+      if (rf!=grs)
+      {
+        rssw();
+      }
       delay(100);
       _on(rd);
       _off(ld);
@@ -247,11 +179,14 @@ void loop() {
     
     //後ろ
     if (data=="b") {
-      rf=0;
-      _on(rs);
-      lf=0;
-      delay(100);
-      _on(ls);
+      if (rf!=brs)
+      {
+        rssw();
+      }
+      if (lf!=bls)
+      {
+        lssw();
+      }
       delay(100);
       _on(rd);
       _on(ld);
@@ -277,27 +212,15 @@ void loop() {
     }
     
     //右シリンダー
-    if (data=="rs"&&rf==0)
+    if (data=="rs")
     {
-      _off(rs);
-      rf=1;
-    }
-    else if (data=="rs"&&rf==1)
-    {
-      _on(rs);
-      rf=0;
+      rssw();
     }
     
+    
     //左シリンダー
-    if (data=="ls"&&lf==0)
-    {
-      _off(ls);
-      lf=1;
-    }
-    else if (data=="ls"&&lf==1)
-    {
-      _on(ls);
-      lf=0;
+    if(data=="ls"){
+      lssw();
     }
   }
 }
