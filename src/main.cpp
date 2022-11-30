@@ -4,10 +4,10 @@
 #include <SPIFFS.h>
 
 const char ssid[] = "AirRobot";
-const char pass[] = "nogami1103";       // パスワードは8文字以上
+const char pass[] = "nogami1103";
 const IPAddress ip(192,168,4,1);
 const IPAddress subnet(255,255,255,0);
-AsyncWebServer server(80);            // ポート設定
+AsyncWebServer server(80);
 
 #define rd 26
 #define rs 25
@@ -67,27 +67,24 @@ void setup()
   pinMode(ld,OUTPUT);
   pinMode(ls,OUTPUT);
 
-  // SPIFFSのセットアップ
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
   
-  WiFi.softAP(ssid, pass);           // SSIDとパスの設定
-  delay(100);                        // このdelayを入れないと失敗する場合がある
-  WiFi.softAPConfig(ip, ip, subnet); // IPアドレス、ゲートウェイ、サブネットマスクの設定
+  WiFi.softAP(ssid, pass);
+  delay(100);
+  WiFi.softAPConfig(ip, ip, subnet);
   
-  IPAddress myIP = WiFi.softAPIP();  // WiFi.softAPIP()でWiFi起動
+  IPAddress myIP = WiFi.softAPIP();
 
   delay(1000);
-  // 各種情報を表示
+
   Serial.print("SSID: ");
   Serial.println(ssid);
   Serial.print("AP IP address: ");
   Serial.println(myIP);
 
-  // GETリクエストに対するハンドラーを登録
-  // rootにアクセスされた時のレスポンス
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html");
   });
@@ -98,6 +95,38 @@ void setup()
     request->send(SPIFFS, "/favicon.ico", "text/css");
   });
 
+  server.on("/straight", HTTP_GET, [](AsyncWebServerRequest *request){
+    _on(rd);
+    _on(ld);
+  });
+
+  server.on("/stop", HTTP_GET, [](AsyncWebServerRequest *request){
+    delay(100);
+    _off(rd);
+    _off(ld);
+  });
+
+  server.on("/right", HTTP_GET, [](AsyncWebServerRequest *request){
+    rf=1;
+    lf=1;
+    _off(rs);
+    delay(100);
+    _off(ls);
+    delay(100);
+    _off(rd);
+    _on(ld);
+  });
+
+  server.on("/left", HTTP_GET, [](AsyncWebServerRequest *request){
+    rf=1;
+    lf=1;
+    _off(rs);
+    delay(100);
+    _off(ls);
+    delay(100);
+    _on(rd);
+    _off(ld);
+  });
 
   server.on("/stop", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200);
@@ -106,23 +135,32 @@ void setup()
     _off(rs);
   });
 
-  //For Controller
+  //コントローラー向け
   server.on("/rdon", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200);
     _on(rd);
   });
 
   server.on("/rdoff", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200);
     _off(rd);
   });
 
+  server.on("/ldon", HTTP_GET, [](AsyncWebServerRequest *request){
+    _on(ld);
+  });
+
+  server.on("/ldoff", HTTP_GET, [](AsyncWebServerRequest *request){
+    _off(ld);
+  });
+
   server.on("/rs", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200);
     rssw();
   });
 
-  // サーバースタート
+  server.on("/ls", HTTP_GET, [](AsyncWebServerRequest *request){
+    lssw();
+  });
+
+
   server.begin();
   delay(1000);
   Serial.println("Server start!");
@@ -132,7 +170,7 @@ void loop() {
   if(Serial.available()>0){
     String data = Serial.readStringUntil('\n');
     
-    //まっすぐ
+    //直進
     if (data=="g") {
       if (rf!=grs)
       {
@@ -148,7 +186,7 @@ void loop() {
       _on(ld);
     }
 
-    //とまる
+    //停止
     if (data=="s") {
       delay(100);
       _off(rd);
@@ -177,7 +215,7 @@ void loop() {
       _off(ld);
     }
     
-    //後ろ
+    //後進
     if (data=="b") {
       if (rf!=brs)
       {
